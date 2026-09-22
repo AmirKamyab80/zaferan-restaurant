@@ -2,9 +2,6 @@ name: Build Zaferan APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   build:
@@ -18,8 +15,6 @@ jobs:
         run: |
           mkdir -p app
           unzip -q zaferan_restaurant_flutter_v2.zip -d app
-          echo "Extracted files:"
-          find app -maxdepth 3 -name pubspec.yaml -print
 
       - name: Find Flutter project
         id: project
@@ -37,6 +32,10 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+
+      - name: Generate Android files
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter create --platforms=android .
 
       - name: Install dependencies
         working-directory: ${{ steps.project.outputs.dir }}
