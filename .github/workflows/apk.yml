@@ -1,7 +1,11 @@
-name: Zaferan APK Final
+name: Build Zaferan APK
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'zaferan_restaurant_flutter_v2.zip'
+      - '.github/workflows/apk.yml'
 
 jobs:
   build:
@@ -11,44 +15,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract project
-        run: |
-          mkdir -p app
-          unzip -q zaferan_restaurant_flutter_v2.zip -d app
-
-      - name: Find project
-        id: project
-        run: |
-          PROJECT=$(find app -name pubspec.yaml -print -quit)
-          if [ -z "$PROJECT" ]; then
-            echo "Flutter project not found"
-            exit 1
-          fi
-          DIR=$(dirname "$PROJECT")
-          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
-          echo "Found: $DIR"
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
-      - name: Recreate Android project
-        working-directory: ${{ steps.project.outputs.dir }}
+      - name: Extract Flutter project
         run: |
-          rm -rf android
-          flutter create --platforms=android .
+          rm -rf app
+          mkdir app
+          unzip -q zaferan_restaurant_flutter_v2.zip -d app
 
-      - name: Get packages
-        working-directory: ${{ steps.project.outputs.dir }}
-        run: flutter pub get
+      - name: Create Android platform
+        working-directory: app/zaferan_restaurant_flutter_v2
+        run: |
+          flutter create . --platforms=android
+
+      - name: Install dependencies
+        working-directory: app/zaferan_restaurant_flutter_v2
+        run: |
+          flutter pub get
 
       - name: Build APK
-        working-directory: ${{ steps.project.outputs.dir }}
-        run: flutter build apk --debug
+        working-directory: app/zaferan_restaurant_flutter_v2
+        run: |
+          flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zaferan-zaferan-test-apk
-          path: ${{ steps.project.outputs.dir }}/build/app/outputs/flutter-apk/app-debug.apk
+          name: zaferan-debug-apk
+          path: app/zaferan_restaurant_flutter_v2/build/app/outputs/flutter-apk/app-debug.apk
