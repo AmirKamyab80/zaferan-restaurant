@@ -1,0 +1,280 @@
+name: Zaferan APK Fixed
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Extract project
+        run: |
+          rm -rf app
+          mkdir app
+          unzip -q zaferan_restaurant_flutter_v2.zip -d app
+
+      - name: Find project
+        id: project
+        run: |
+          P=$(find app -name pubspec.yaml -print -quit)
+          D=$(dirname "$P")
+          echo "dir=$D" >> "$GITHUB_OUTPUT"
+          echo "Project: $D"
+
+      - name: Replace broken main.dart
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: |
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/material.dart';
+
+          void main() => runApp(const ZaferanApp());
+
+          class ZaferanApp extends StatelessWidget {
+            const ZaferanApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'زعفران',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: const Color(0xFF5B1A8E),
+                  ),
+                ),
+                home: const HomePage(),
+              );
+            }
+          }
+
+          class HomePage extends StatefulWidget {
+            const HomePage({super.key});
+
+            @override
+            State<HomePage> createState() => _HomePageState();
+          }
+
+          class _HomePageState extends State<HomePage> {
+            final List<Map<String, dynamic>> foods = [
+              {'name': 'چلو کباب مخصوص زعفران', 'price': 320000},
+              {'name': 'جوجه کباب زعفرانی', 'price': 280000},
+              {'name': 'کباب کوبیده', 'price': 260000},
+              {'name': 'زرشک پلو با مرغ', 'price': 240000},
+              {'name': 'قورمه سبزی', 'price': 220000},
+              {'name': 'فسنجان', 'price': 250000},
+              {'name': 'ماست موسیر', 'price': 70000},
+              {'name': 'نوشابه', 'price': 35000},
+            ];
+
+            final List<Map<String, dynamic>> cart = [];
+
+            String money(int n) => n.toString().replaceAllMapped(
+                  RegExp(r'\B(?=(\d{3})+(?!\d))'),
+                  (_) => ',',
+                );
+
+            int get total =>
+                cart.fold(0, (sum, item) => sum + item['price'] as int);
+
+            void add(Map<String, dynamic> food) {
+              setState(() => cart.add(food));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${food['name']} به سبد اضافه شد')),
+              );
+            }
+
+            void showCart() {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SizedBox(
+                    height: MediaQuery.of(context).size.height * .7,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'سبد خرید',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: cart.isEmpty
+                                ? const Center(child: Text('سبد خرید خالی است'))
+                                : ListView.builder(
+                                    itemCount: cart.length,
+                                    itemBuilder: (_, i) => ListTile(
+                                      title: Text(cart[i]['name']),
+                                      trailing: Text(
+                                        '${money(cart[i]['price'])} تومان',
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          if (cart.isNotEmpty)
+                            Text(
+                              'مجموع: ${money(total)} تومان',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          if (cart.isNotEmpty)
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('ادامه ثبت سفارش'),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: const Color(0xFF5B1A8E),
+                    foregroundColor: Colors.white,
+                    centerTitle: true,
+                    title: const Text(
+                      'رستوران زعفران',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    actions: [
+                      IconButton(
+                        onPressed: showCart,
+                        icon: Badge(
+                          isLabelVisible: cart.isNotEmpty,
+                          label: Text('${cart.length}'),
+                          child: const Icon(Icons.shopping_bag_outlined),
+                        ),
+                      ),
+                    ],
+                  ),
+                  body: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFFFD84D),
+                              Color(0xFFFF9A66),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'زعفران',
+                              style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF5B1A8E),
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text('سفارش آنلاین غذای تازه در بندرانزلی'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'منوی رستوران',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ...foods.map(
+                        (food) => Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: ListTile(
+                            title: Text(
+                              food['name'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${money(food['price'])} تومان',
+                            ),
+                            trailing: FilledButton(
+                              onPressed: () => add(food),
+                              child: const Icon(Icons.add),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  bottomNavigationBar: cart.isEmpty
+                      ? null
+                      : SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: FilledButton.icon(
+                              onPressed: showCart,
+                              icon: const Icon(Icons.shopping_bag),
+                              label: Text(
+                                'سبد خرید • ${money(total)} تومان',
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+              );
+            }
+          }
+          DART
+
+      - name: Create Android
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: |
+          rm -rf android
+          flutter create . --platforms=android
+
+      - name: Get packages
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zaferan-test-apk
+          path: ${{ steps.project.outputs.dir }}/build/app/outputs/flutter-apk/app-debug.apk
